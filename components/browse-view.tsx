@@ -20,8 +20,9 @@ import {
 import { CardSkeleton } from '@/components/card-skeleton'
 import { LoadingProgress } from '@/components/loading-progress'
 import { WordDisplay, type WordSection } from '@/components/word-table'
+import { ReviewWordActions } from '@/components/review-word-actions'
 import { unitLabel, loadWords } from '@/lib/data'
-import { useBooks, useSettings } from '@/lib/hooks'
+import { useBooks, useSettings, useReviewNotebook } from '@/lib/hooks'
 import type { WordEntry } from '@/lib/model'
 import { encodeSession } from '@/lib/session'
 import { DEFAULT_SETTINGS } from '@/lib/storage'
@@ -35,6 +36,8 @@ export function BrowseView() {
   const searchParams = useSearchParams()
   const { books, error: booksError } = useBooks()
   const [settings] = useSettings()
+  const { engine, items } = useReviewNotebook()
+  const byWord = React.useMemo(() => new Map(items.map(item => [item.word.english, item])), [items])
 
   // 选择状态放在 URL 查询串里（units 缺省 = 全部单元），刷新 / 分享不丢
   const bookId = books?.some((b) => b.id === searchParams.get('book')) ? searchParams.get('book')! : (books?.[0]?.id ?? '')
@@ -140,6 +143,7 @@ export function BrowseView() {
         questionMode: base.questionMode,
         mergeMode: base.mergeMode,
         showFirstLetter: base.showFirstLetter,
+        ...(base.includeConsolidated ? { includeConsolidated: true } : {}),
       },
     })}`
   }
@@ -235,7 +239,8 @@ export function BrowseView() {
             {loadingUnits && (
               <LoadingProgress label="正在继续加载词条…" loaded={loadedUnits} total={unitIds.length} />
             )}
-            <WordDisplay sections={sections} />
+            <WordDisplay sections={sections} renderActions={engine ? word => <ReviewWordActions engine={engine} word={word} item={byWord.get(word.english)}
+              origins={visibleGroups.filter(g => g.words.some(w => w.english === word.english)).map(g => ({ bookId, unitId: g.unit }))} /> : undefined} />
             {totalVisible > shown && (
               <Flex justify="center" py="2">
                 <Button

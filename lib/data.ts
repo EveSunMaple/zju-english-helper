@@ -1,5 +1,6 @@
 import { isWordEntry, type WordEntry } from './model'
 import { hasFields, isId, isText } from './validation'
+import type { WordOrigin } from './review'
 
 export interface BookMeta {
   id: string
@@ -103,6 +104,16 @@ export async function loadWordsWithProgress(
 /** 加载一本词书若干单元的全部词条（按单元顺序拼接） */
 export function loadWords(bookId: string, unitIds: string[]): Promise<WordEntry[]> {
   return loadWordsWithProgress(bookId, unitIds)
+}
+
+export async function loadWordsWithOrigins(bookId: string, unitIds: string[], onProgress?: (progress: LoadProgress) => void) {
+  await loadWordsWithProgress(bookId, unitIds, onProgress)
+  const groups = await Promise.all(unitIds.map(async unitId => ({ unitId, words: await loadUnit(bookId, unitId) })))
+  const origins = new Map<string, WordOrigin[]>()
+  for (const group of groups) for (const word of group.words) {
+    origins.set(word.english, [...origins.get(word.english) ?? [], { bookId, unitId: group.unitId }])
+  }
+  return { words: groups.flatMap(group => group.words), origins }
 }
 
 export function unitLabel(unitId: string): string {

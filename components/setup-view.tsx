@@ -17,7 +17,7 @@ import {
 } from '@radix-ui/themes'
 import { unitLabel } from '@/lib/data'
 import type { MergeMode } from '@/lib/model'
-import { useBooks, useSettings, useWrongBook } from '@/lib/hooks'
+import { useBooks, useSettings, useWrongCount } from '@/lib/hooks'
 import { encodeSession, sessionFromSettings } from '@/lib/session'
 import type { Settings } from '@/lib/storage'
 import { TodayCard } from '@/components/today-stats'
@@ -31,7 +31,7 @@ export function SetupView() {
   const router = useRouter()
   const { books, error } = useBooks()
   const [settings, update] = useSettings()
-  const { words } = useWrongBook()
+  const dueCount = useWrongCount()
 
   if (error) {
     return (
@@ -203,6 +203,10 @@ export function SetupView() {
           </div>
 
           {/* 偏好 */}
+          <Flex align="center" justify="between" gap="3">
+            <Text size="2">包含已稳固词</Text>
+            <Switch checked={settings.includeConsolidated === true} onCheckedChange={includeConsolidated => update({ ...settings, includeConsolidated })} aria-label="包含已稳固词" />
+          </Flex>
           <div className="grid gap-3 sm:grid-cols-2">
             <Flex
               justify="between"
@@ -271,12 +275,12 @@ export function SetupView() {
             <Button
               size="3"
               variant="soft"
-              disabled={words.length === 0}
+              disabled={dueCount === 0}
               onClick={() => router.push('/practice?review=1')}
               className="w-full"
             >
               <NotebookText size={16} />
-              复习错题{words.length > 0 ? `（${words.length}）` : ''}
+              今日复习{dueCount > 0 ? `（${dueCount}）` : ''}
             </Button>
           </div>
         </Flex>

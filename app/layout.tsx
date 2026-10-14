@@ -4,6 +4,7 @@ import '@radix-ui/themes/styles.css'
 import './globals.css'
 import { AppHeader } from '@/components/app-header'
 import { StorageErrorBoundary } from '@/components/storage-error-boundary'
+import { SaveStatus } from '@/components/save-status'
 
 export const metadata: Metadata = {
   title: { default: '大英默写器 Pro', template: '%s · 大英默写器 Pro' },
@@ -65,6 +66,7 @@ export default function RootLayout({
           <Flex direction="column" className="min-h-dvh">
             <StorageErrorBoundary>
               <AppHeader />
+              <SaveStatus />
               <Box asChild flexGrow="1">
                 <main>{children}</main>
               </Box>

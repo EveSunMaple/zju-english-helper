@@ -18,12 +18,12 @@ import {
   Theme,
 } from '@radix-ui/themes'
 import { ThemeToggle } from '@/components/theme-toggle'
-import { useWrongBook } from '@/lib/hooks'
+import { useWrongCount } from '@/lib/hooks'
 
 /** 页头导航清单：桌面端内联、移动端全屏菜单，共用同一份 */
 const NAV_ITEMS = [
   { href: '/browse', label: '预习词库', icon: BookOpenText },
-  { href: '/wrong-words', label: '错题本', icon: NotebookText },
+  { href: '/wrong-words', label: '复习本', icon: NotebookText },
   { href: '/settings', label: '设置', icon: Settings2 },
   { href: '/help', label: '帮助', icon: CircleHelp },
 ]
@@ -138,7 +138,7 @@ function MobileMenu({
 }
 
 export function AppHeader() {
-  const { words } = useWrongBook()
+  const wrongCount = useWrongCount()
   const pathname = usePathname().replace(/\/$/, '') || '/'
   const [menuOpen, setMenuOpen] = React.useState(false)
   const menuTriggerRef = React.useRef<HTMLButtonElement>(null)
@@ -210,8 +210,8 @@ export function AppHeader() {
                   pathname={pathname}
                   href="/wrong-words"
                   icon={<NotebookText size={18} />}
-                  label="错题本"
-                  ariaLabel={words.length > 0 ? `错题本（${words.length} 词）` : '错题本'}
+                  label="复习本"
+                  ariaLabel={wrongCount > 0 ? `复习本（待复习 ${wrongCount} 词）` : '复习本'}
                 />
               </Flex>
 
@@ -254,7 +254,7 @@ export function AppHeader() {
         open={menuOpen}
         onClose={() => setMenuOpen(false)}
         pathname={pathname}
-        wrongCount={words.length}
+        wrongCount={wrongCount}
       />
     </header>
   )
