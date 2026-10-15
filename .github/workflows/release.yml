@@ -29,7 +29,7 @@ jobs:
             console.log('版本一致：' + tag);
           "
 
-  publish-tauri:
+  publish-desktop:
     needs: verify-version
     strategy:
       fail-fast: false
@@ -82,8 +82,85 @@ jobs:
             - macOS：`aarch64` 对应 Apple 芯片，`x64` 对应 Intel
             - Windows：`.exe`（NSIS 安装器）或 `.msi`
             - Linux：`.deb` / `.AppImage` / `.rpm`
+            - Android：`.apk`（通用包，含 arm64 / armv7 / x86_64 / x86）
 
-            安装包未经代码签名。macOS 首次打开如提示无法验证，请在「系统设置 → 隐私与安全性」中允许打开，或右键应用选择「打开」；Windows 出现 SmartScreen 提示时选择「仍要运行」。
+            安装包未经代码签名。macOS 首次打开如提示无法验证，请在「系统设置 → 隐私与安全性」中允许打开，或右键应用选择「打开」；Windows 出现 SmartScreen 提示时选择「仍要运行」；Android 安装时需允许安装未知来源应用。
           releaseDraft: true
           prerelease: false
           args: ${{ matrix.args }}
+
+  publish-android:
+    needs: verify-version
+    runs-on: ubuntu-latest
+    env:
+      ANDROID_KEY_BASE64: ${{ secrets.ANDROID_KEY_BASE64 }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: lts/*
+          cache: npm
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: 安装 Android SDK 组件
+        run: |
+          SDKMANAGER="${ANDROID_HOME:-/usr/local/lib/android/sdk}/cmdline-tools/latest/bin/sdkmanager"
+          yes | "$SDKMANAGER" --licenses > /dev/null || true
+          "$SDKMANAGER" "platforms;android-37.0" "build-tools;37.0.0" "ndk;29.0.13846066"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: './src-tauri -> target'
+
+      - run: npm ci
+
+      - name: 配置 Android 签名
+        if: env.ANDROID_KEY_BASE64 != ''
+        env:
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          echo "$ANDROID_KEY_BASE64" | base64 --decode > "$RUNNER_TEMP/zjueh-release.jks"
+          cat > src-tauri/gen/android/keystore.properties <<EOF
+          storeFile=$RUNNER_TEMP/zjueh-release.jks
+          storePassword=$ANDROID_KEYSTORE_PASSWORD
+          keyAlias=$ANDROID_KEY_ALIAS
+          keyPassword=$ANDROID_KEY_PASSWORD
+          EOF
+
+      - name: 构建 APK
+        run: |
+          export NDK_HOME="$ANDROID_HOME/ndk/29.0.13846066"
+          npx tauri android build --apk --ci
+          VERSION="${GITHUB_REF_NAME#v}"
+          mv src-tauri/gen/android/app/build/outputs/apk/universal/release/app-universal-release.apk \
+             "ZJU English Helper_${VERSION}_android-universal.apk"
+
+      - uses: actions/upload-artifact@v7
+        with:
+          name: android-apk
+          path: ZJU English Helper_*_android-universal.apk
+          if-no-files-found: error
+
+  attach-android:
+    needs: [publish-desktop, publish-android]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/download-artifact@v8
+        with:
+          name: android-apk
+
+      - name: 附加 APK 到草稿 Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release upload "$GITHUB_REF_NAME" ./*_android-universal.apk --clobber --repo "$GITHUB_REPOSITORY"
