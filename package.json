@@ -11,7 +11,10 @@
     "test": "npm run check:data && npm run test:unit",
     "test:unit": "tsc -p tests/tsconfig.json && node --test .test-build/tests/*.test.js",
     "desktop:dev": "tauri dev",
-    "desktop:build": "tauri build"
+    "desktop:build": "tauri build",
+    "android:dev": "tauri android dev",
+    "android:build": "tauri android build --apk",
+    "tauri": "tauri"
   },
   "dependencies": {
     "@radix-ui/themes": "^3.3.0",
